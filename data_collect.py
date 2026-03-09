@@ -995,13 +995,18 @@ def game_loop(args):
     pygame.init()
     pygame.font.init()
     world = None
+    sim_world = None
+    client = None
+    traffic_manager = None
+    actor_list = []
 
     try:
         if args.seed:
             random.seed(args.seed)
 
         client = carla.Client(args.host, args.port)
-        client.set_timeout(40.0)
+        client.set_timeout(args.timeout)
+        logging.info("Loading world '%s' (timeout: %.1fs)", args.map, args.timeout)
         client.load_world(
             f'{args.map}', carla.MapLayer.Buildings | carla.MapLayer.ParkedVehicles)
 
@@ -1011,8 +1016,6 @@ def game_loop(args):
 
         traffic_manager = client.get_trafficmanager()
         sim_world = client.get_world()
-
-        actor_list = []
         if args.sync:
             settings = sim_world.get_settings()
             settings.synchronous_mode = True
@@ -1376,16 +1379,19 @@ def game_loop(args):
     finally:
 
         print('\ndestroying %d actors' % len(actor_list))
-        client.apply_batch_sync([carla.command.DestroyActor(x)
-                                for x in actor_list])
+        if client is not None and actor_list:
+            client.apply_batch_sync([carla.command.DestroyActor(x)
+                                    for x in actor_list])
 
-        if world is not None:
-            settings = world.world.get_settings()
+        if sim_world is not None:
+            settings = sim_world.get_settings()
             settings.synchronous_mode = False
             settings.fixed_delta_seconds = None
-            world.world.apply_settings(settings)
-            traffic_manager.set_synchronous_mode(True)
+            sim_world.apply_settings(settings)
+        if traffic_manager is not None:
+            traffic_manager.set_synchronous_mode(False)
 
+        if world is not None:
             world.destroy()
 
         pygame.quit()
@@ -1458,6 +1464,12 @@ def main():
         help='Set seed for repeating executions (default: None)',
         default=None,
         type=int)
+    argparser.add_argument(
+        '--timeout',
+        metavar='SECONDS',
+        default=40.0,
+        type=float,
+        help='CARLA RPC timeout in seconds (default: 40.0)')
 
     args = argparser.parse_args()
 
