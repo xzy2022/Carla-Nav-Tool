@@ -8,7 +8,7 @@
 按键逻辑在 data_collect.py (line 274)：
 鼠标左键：设定目标点并开始一次自动行驶。
 第一次点会在终端弹 Enter Command:，你需要在终端输入文本并回车（不输入会像“卡住”）。
-Esc 或 Ctrl+Q：退出。
+Esc 或 Ctrl+Q：退出。（似乎只有这个有效）
 D：下一条 episode（下次点击会新建 episode 并重新输入 command）。
 Z：删除当前 episode 并准备下一条。
 R：重写当前 command.txt。
