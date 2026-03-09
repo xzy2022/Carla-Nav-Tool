@@ -905,6 +905,8 @@ def pixel_to_world(image, weak_ref, weak_agent, screen_pos, K, destination, set_
 
     dc_weak = weak_ref()
     agent_weak = weak_agent()
+    if dc_weak is None or agent_weak is None:
+        return
 
     # image.save_to_disk('_out/%06d.jpg' % image.frame)
 
@@ -936,8 +938,10 @@ def pixel_to_world(image, weak_ref, weak_agent, screen_pos, K, destination, set_
 
     print("Pixel Coords: ", screen_pos)
 
-    R, G, B = im_array[screen_pos[1], screen_pos[0]]
-    normalized = (R + G * 256 + B * 256 * 256) / (256 * 256 * 256 - 1)
+    # NumPy 2.x raises OverflowError for uint8 scalar ops like `G * 256`,
+    # so upcast channel values before decoding CARLA packed depth.
+    R, G, B = im_array[screen_pos[1], screen_pos[0]].astype(np.float32)
+    normalized = (R + G * 256.0 + B * 256.0 * 256.0) / (256.0 * 256.0 * 256.0 - 1.0)
     depth = 1000 * normalized
 
     print("Depth: ", depth)
@@ -975,14 +979,19 @@ def pixel_to_world(image, weak_ref, weak_agent, screen_pos, K, destination, set_
     target_number += 1
     if set_destination:
         agent_weak.set_destination(new_destination)
+        # CARLA 0.9.16 agent internals no longer guarantee this custom field.
+        # Keep backward-compatible behavior expected by this script.
+        agent_weak.target_destination = new_destination
 
-    curr_position = agent._vehicle.get_transform().location
+    target_destination = getattr(agent_weak, "target_destination", None) or new_destination
+
+    curr_position = agent_weak._vehicle.get_transform().location
 
     pos = np.array(
         [curr_position.x, curr_position.y, curr_position.z])
 
     w2px = world_to_pixel(K, depth_cam_matrix_inv, np.array(
-        [agent_weak.target_destination.x, agent_weak.target_destination.y, agent_weak.target_destination.z]).reshape(3, 1), pos).T
+        [target_destination.x, target_destination.y, target_destination.z]).reshape(3, 1), pos).T
 
     # print(w2px[:,:2]/w2px[:,2])
     print(w2px)
