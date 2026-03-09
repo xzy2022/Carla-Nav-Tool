@@ -9,8 +9,11 @@
 """Example of automatic vehicle control from client side."""
 
 # CarlaUE4.exe -windowed -carla-server -quality-level=Low
-
 from __future__ import print_function
+
+import sys
+sys.path.append(r"D:\Workspace\02_Playground\CARLA_Latest\PythonAPI\carla")
+
 import shutil
 from agents.navigation.basic_agent import BasicAgent  # pylint: disable=import-error
 from agents.navigation.behavior_agent import BehaviorAgent  # pylint: disable=import-error

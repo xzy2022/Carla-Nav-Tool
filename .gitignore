@@ -3,3 +3,4 @@ rrc
 _out/*
 _annotated_out/*
 _xyz_out/*
+*.pyc
