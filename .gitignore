@@ -4,3 +4,5 @@ _out/*
 _annotated_out/*
 _xyz_out/*
 *.pyc
+Docs_Carla_UE4/
+PythonAPI_Carla_UE4/

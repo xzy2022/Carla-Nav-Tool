@@ -11,6 +11,7 @@
 # CarlaUE4.exe -windowed -carla-server -quality-level=Low
 from __future__ import print_function
 
+import os
 import sys
 sys.path.append(r"D:\Workspace\02_Playground\CARLA_Latest\PythonAPI\carla")
 
@@ -59,6 +60,30 @@ try:
 except ImportError:
     raise RuntimeError(
         'cannot import numpy, make sure numpy package is installed')
+
+
+def apply_carla_api_compatibility_patches():
+    """
+    Patch API drift between old navigation agent code and newer CARLA builds.
+    CARLA 0.9.16 requires an epsilon argument for Vector3D.make_unit_vector().
+    """
+    if getattr(carla, '_codex_make_unit_vector_patched', False):
+        return
+    try:
+        # Older CARLA bindings allowed calling this method without args.
+        carla.Vector3D(1.0, 0.0, 0.0).make_unit_vector()
+    except Exception:
+        original_make_unit_vector = carla.Vector3D.make_unit_vector
+
+        def _make_unit_vector_compat(self, *args):
+            if args:
+                return original_make_unit_vector(self, *args)
+            return original_make_unit_vector(self, 1e-6)
+
+        carla.Vector3D.make_unit_vector = _make_unit_vector_compat
+        carla._codex_make_unit_vector_patched = True
+        logging.info(
+            'Applied CARLA compatibility patch: Vector3D.make_unit_vector() uses epsilon=1e-6 by default')
 
 # ==============================================================================
 # -- Find CARLA module ---------------------------------------------------------
@@ -1003,6 +1028,7 @@ def game_loop(args):
     try:
         if args.seed:
             random.seed(args.seed)
+        apply_carla_api_compatibility_patches()
 
         client = carla.Client(args.host, args.port)
         client.set_timeout(args.timeout)
@@ -1233,6 +1259,7 @@ def game_loop(args):
         print("Intinsic Matrix:\n", K)
 
         temp_dir = "./_out"
+        os.makedirs(temp_dir, exist_ok=True)
 
         handled = False
 
